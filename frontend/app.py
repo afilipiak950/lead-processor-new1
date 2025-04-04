@@ -24,77 +24,32 @@ def run_ai_analysis():
         agent = AIAgent()
         
         # Lade Leads von Apify
-        df_leads = load_real_leads()
-        if df_leads.empty:
+        leads = get_leads_from_apify()
+        if not leads:
             logger.warning("Keine Leads zum Analysieren gefunden")
             return []
             
-        # Konvertiere DataFrame zu Liste von Dictionaries
-        leads = df_leads.to_dict('records')
-        logger.info(f"Starte Analyse für {len(leads)} Leads...")
+        # Verarbeite die Leads
+        analyses = agent.process_leads(leads)
         
-        # Analysiere jeden Lead
-        analyses = []
-        with st.progress(0) as progress_bar:
-            for idx, lead in enumerate(leads):
-                try:
-                    # Extrahiere Lead-Informationen
-                    name = lead.get('name', 'Unbekannt')
-                    company = lead.get('company', 'Unbekannt')
-                    email = lead.get('email', 'Unbekannt')
-                    website_content = lead.get('organization_website_url', '')
-                    linkedin_content = lead.get('linkedin_url', '')
-                    
-                    # Status-Update
-                    st.write(f"🔄 Analysiere Lead: {name} von {company}")
-                    
-                    # Website-Analyse
-                    website_summary = agent.analyze_website(website_content)
-                    logger.debug(f"Website-Analyse für {name} abgeschlossen")
-                    
-                    # LinkedIn-Analyse
-                    linkedin_summary = agent.analyze_linkedin(linkedin_content)
-                    logger.debug(f"LinkedIn-Analyse für {name} abgeschlossen")
-                    
-                    # Bestimme Kommunikationsstil basierend auf der Position
-                    position = lead.get('title', '').lower()
-                    communication_style = 'informal' if any(word in position for word in ['ceo', 'founder', 'owner', 'startup']) else 'formal'
-                    
-                    # Generiere personalisierte Nachricht
-                    message = agent.generate_message(
-                        website_summary=website_summary,
-                        linkedin_summary=linkedin_summary,
-                        communication_style=communication_style
-                    )
-                    logger.debug(f"Nachricht für {name} generiert")
-                    
-                    # Speichere Analyse
-                    analysis = {
-                        'name': name,
-                        'company': company,
-                        'email': email,
-                        'website_summary': website_summary,
-                        'linkedin_summary': linkedin_summary,
-                        'personalized_message': message,
-                        'status': 'aktiv',
-                        'communication_style': communication_style,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    analyses.append(analysis)
-                    
-                    # Update Progress
-                    progress = (idx + 1) / len(leads)
-                    progress_bar.progress(progress)
-                    
-                except Exception as e:
-                    logger.error(f"Fehler bei der Analyse von {name}: {str(e)}")
-                    continue
-        
-        # Speichere Analysen
-        save_analyses(analyses)
+        # Speichere die Analysen
+        if analyses:
+            # Lade bestehende Analysen
+            existing_analyses = load_analyses()
+            
+            # Füge neue Analysen hinzu
+            all_analyses = existing_analyses + analyses
+            
+            # Speichere alle Analysen
+            save_analyses(all_analyses)
+            
+            logger.info(f"Analysen erfolgreich gespeichert: {len(analyses)} neue Einträge")
+        else:
+            logger.warning("Keine neuen Analysen generiert")
+            
         logger.info(f"AI-Analyse für {len(analyses)} Leads abgeschlossen")
         return analyses
-        
+            
     except Exception as e:
         logger.error(f"Fehler bei der AI-Analyse: {str(e)}")
         return []
