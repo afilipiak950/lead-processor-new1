@@ -6,15 +6,23 @@ from datetime import datetime, timedelta
 import os
 import json
 from dotenv import load_dotenv
+import logging
+
+# Konfiguriere Logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Importiere die AI-Agenten und Scheduler
+logger.debug("Importiere Module...")
 from ai_agent import get_leads_from_apify, load_analyses
 from scheduler import get_scheduler
 
 # Lade Umgebungsvariablen
+logger.debug("Lade Umgebungsvariablen...")
 load_dotenv()
 
 # Seitenkonfiguration
+logger.debug("Konfiguriere Streamlit-Seite...")
 st.set_page_config(
     page_title="Lead Processor Dashboard",
     page_icon="🚀",
@@ -85,12 +93,13 @@ def get_sample_data():
 def load_real_leads():
     """Lädt die echten Leads von Apify."""
     try:
+        logger.debug("Versuche Leads von Apify zu laden...")
         leads = get_leads_from_apify()
         if not leads:
-            st.warning("Keine Leads von Apify gefunden. Verwende Beispieldaten.")
+            logger.warning("Keine Leads von Apify gefunden. Verwende Beispieldaten.")
             return get_sample_data()
         
-        # Konvertiere zu DataFrame
+        logger.info(f"{len(leads)} Leads erfolgreich geladen!")
         df = pd.DataFrame(leads)
         
         # Füge fehlende Spalten hinzu
@@ -98,14 +107,25 @@ def load_real_leads():
             df['timestamp'] = datetime.now()
         
         if 'status' not in df.columns:
-            df['status'] = 'aktiv'
+            df['status'] = 'aktiv'  # Setze Standardstatus
         
         if 'communication_style' not in df.columns:
-            df['communication_style'] = 'formal'
+            df['communication_style'] = 'formal'  # Setze Standard-Kommunikationsstil
+            
+        # Stelle sicher, dass alle erforderlichen Spalten vorhanden sind
+        required_columns = ['name', 'email', 'company', 'status', 'communication_style', 'timestamp']
+        for col in required_columns:
+            if col not in df.columns:
+                if col == 'name':
+                    df[col] = df['first_name'].str.cat(df['last_name'], sep=' ')
+                elif col == 'company':
+                    df[col] = df['organization_name']
+                else:
+                    df[col] = 'nicht verfügbar'
         
         return df
     except Exception as e:
-        st.error(f"Fehler beim Laden der Leads: {str(e)}")
+        logger.error(f"Fehler beim Laden der Leads: {str(e)}")
         return get_sample_data()
 
 # Funktion zum Laden der AI-Analysen
