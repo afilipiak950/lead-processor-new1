@@ -13,3 +13,8 @@ load_dotenv()
 from app import *
 
 # Die App wird automatisch ausgeführt, wenn sie importiert wird 
+
+# Umgebungsvariablen für Google Sheets
+GOOGLE_SHEETS_CREDENTIALS={"type": "service_account", ...}
+SPREADSHEET_ID=your_spreadsheet_id
+WORKSHEET_NAME=your_worksheet_name 
