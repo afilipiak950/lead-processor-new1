@@ -14,8 +14,112 @@ logger = logging.getLogger(__name__)
 
 # Importiere die AI-Agenten und Scheduler
 logger.debug("Importiere Module...")
-from ai_agent import get_leads_from_apify, load_analyses
+from ai_agent import AIAgent, get_leads_from_apify, load_analyses
 from scheduler import get_scheduler
+
+def run_ai_analysis():
+    """Führt die AI-Analyse für neue Leads durch."""
+    try:
+        # Initialisiere AI-Agent
+        agent = AIAgent()
+        
+        # Lade Leads von Apify
+        leads = load_real_leads()
+        if not leads:
+            logger.warning("Keine Leads zum Analysieren gefunden")
+            return []
+            
+        logger.info(f"Starte Analyse für {len(leads)} Leads...")
+        
+        # Analysiere jeden Lead
+        analyses = []
+        with st.progress(0) as progress_bar:
+            for idx, lead in enumerate(leads):
+                try:
+                    # Extrahiere Lead-Informationen
+                    name = lead.get('name', 'Unbekannt')
+                    company = lead.get('company', 'Unbekannt')
+                    email = lead.get('email', 'Unbekannt')
+                    website_content = lead.get('website_content', '')
+                    linkedin_content = lead.get('linkedin_content', '')
+                    
+                    # Status-Update
+                    st.write(f"🔄 Analysiere Lead: {name} von {company}")
+                    
+                    # Website-Analyse
+                    website_summary = agent.analyze_website(website_content)
+                    logger.debug(f"Website-Analyse für {name} abgeschlossen")
+                    
+                    # LinkedIn-Analyse
+                    linkedin_summary = agent.analyze_linkedin(linkedin_content)
+                    logger.debug(f"LinkedIn-Analyse für {name} abgeschlossen")
+                    
+                    # Bestimme Kommunikationsstil basierend auf der Position
+                    position = lead.get('position', '').lower()
+                    communication_style = 'informal' if any(word in position for word in ['ceo', 'founder', 'owner', 'startup']) else 'formal'
+                    
+                    # Generiere personalisierte Nachricht
+                    message = agent.generate_message(
+                        website_summary=website_summary,
+                        linkedin_summary=linkedin_summary,
+                        communication_style=communication_style
+                    )
+                    logger.debug(f"Nachricht für {name} generiert")
+                    
+                    # Speichere Analyse
+                    analysis = {
+                        'name': name,
+                        'company': company,
+                        'email': email,
+                        'website_summary': website_summary,
+                        'linkedin_summary': linkedin_summary,
+                        'personalized_message': message,
+                        'status': 'aktiv',
+                        'communication_style': communication_style,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    analyses.append(analysis)
+                    
+                    # Update Progress
+                    progress = (idx + 1) / len(leads)
+                    progress_bar.progress(progress)
+                    
+                except Exception as e:
+                    logger.error(f"Fehler bei der Analyse von {name}: {str(e)}")
+                    continue
+        
+        # Speichere Analysen
+        save_analyses(analyses)
+        logger.info(f"AI-Analyse für {len(analyses)} Leads abgeschlossen")
+        return analyses
+        
+    except Exception as e:
+        logger.error(f"Fehler bei der AI-Analyse: {str(e)}")
+        return []
+
+def save_analyses(analyses):
+    """Speichert die Analysen in einer JSON-Datei."""
+    try:
+        # Erstelle Verzeichnis wenn nicht vorhanden
+        os.makedirs('data', exist_ok=True)
+        
+        # Lade existierende Analysen
+        existing_analyses = []
+        if os.path.exists('data/analyses.json'):
+            with open('data/analyses.json', 'r', encoding='utf-8') as f:
+                existing_analyses = json.load(f)
+        
+        # Füge neue Analysen hinzu
+        all_analyses = existing_analyses + analyses
+        
+        # Speichere aktualisierte Analysen
+        with open('data/analyses.json', 'w', encoding='utf-8') as f:
+            json.dump(all_analyses, f, ensure_ascii=False, indent=2)
+            
+        logger.info(f"Analysen erfolgreich gespeichert: {len(analyses)} neue Einträge")
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern der Analysen: {str(e)}")
 
 # Lade Umgebungsvariablen
 logger.debug("Lade Umgebungsvariablen...")
@@ -233,32 +337,14 @@ def load_real_leads():
 def load_ai_analyses():
     """Lädt die gespeicherten AI-Analysen."""
     try:
-        # Beispieldaten für Test und Entwicklung
-        analyses = [
-            {
-                'name': 'Max Mustermann',
-                'company': 'Beispiel GmbH',
-                'email': 'max@beispiel.de',
-                'website_summary': 'Die Beispiel GmbH ist ein führender Anbieter von IT-Dienstleistungen mit Fokus auf Cloud-Computing und KI-Lösungen. Das Unternehmen beschäftigt über 100 Mitarbeiter und hat seinen Hauptsitz in München.',
-                'linkedin_summary': 'Max Mustermann ist CTO mit 15 Jahren Erfahrung in der IT-Branche. Er hat einen starken Fokus auf innovative Technologien und digitale Transformation.',
-                'personalized_message': 'Sehr geehrter Herr Mustermann,\n\nIch habe mit großem Interesse die innovativen KI-Projekte der Beispiel GmbH verfolgt. Ihre Erfahrung im Bereich der digitalen Transformation ist beeindruckend.\n\nGerne würde ich mit Ihnen über mögliche Synergien im Bereich KI-gestützter Marketing-Automation sprechen.\n\nHaben Sie nächste Woche Zeit für ein kurzes Gespräch?\n\nBeste Grüße',
-                'status': 'aktiv',
-                'communication_style': 'formal'
-            },
-            {
-                'name': 'Anna Schmidt',
-                'company': 'Tech Solutions AG',
-                'email': 'anna.schmidt@techsolutions.de',
-                'website_summary': 'Tech Solutions AG ist ein innovatives Startup im Bereich E-Commerce und digitale Transformation. Das Unternehmen wächst schnell und hat bereits mehrere erfolgreiche Projekte durchgeführt.',
-                'linkedin_summary': 'Anna Schmidt ist Marketing Director mit Schwerpunkt auf digitalen Vertriebsstrategien. Sie hat erfolgreich mehrere E-Commerce Plattformen aufgebaut.',
-                'personalized_message': 'Hi Anna,\n\ndie Erfolge von Tech Solutions im E-Commerce-Bereich sind wirklich beeindruckend! Besonders Ihr letztes Projekt zur Optimierung der Customer Journey hat meine Aufmerksamkeit geweckt.\n\nIch hätte da ein paar spannende Ideen, wie wir Ihre Conversion Rate noch weiter steigern könnten.\n\nWann passt es dir am besten, darüber zu sprechen?\n\nViele Grüße',
-                'status': 'aktiv',
-                'communication_style': 'informal'
-            }
-        ]
-        
-        logger.debug(f"AI-Analysen erfolgreich geladen: {len(analyses)} Einträge gefunden")
-        return analyses
+        if os.path.exists('data/analyses.json'):
+            with open('data/analyses.json', 'r', encoding='utf-8') as f:
+                analyses = json.load(f)
+            logger.debug(f"AI-Analysen erfolgreich geladen: {len(analyses)} Einträge gefunden")
+            return analyses
+        else:
+            logger.debug("Keine gespeicherten Analysen gefunden")
+            return []
     except Exception as e:
         logger.error(f"Fehler beim Laden der AI-Analysen: {str(e)}")
         return []
