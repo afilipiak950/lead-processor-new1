@@ -24,11 +24,13 @@ def run_ai_analysis():
         agent = AIAgent()
         
         # Lade Leads von Apify
-        leads = load_real_leads()
-        if not leads:
+        df_leads = load_real_leads()
+        if df_leads.empty:
             logger.warning("Keine Leads zum Analysieren gefunden")
             return []
             
+        # Konvertiere DataFrame zu Liste von Dictionaries
+        leads = df_leads.to_dict('records')
         logger.info(f"Starte Analyse für {len(leads)} Leads...")
         
         # Analysiere jeden Lead
@@ -40,8 +42,8 @@ def run_ai_analysis():
                     name = lead.get('name', 'Unbekannt')
                     company = lead.get('company', 'Unbekannt')
                     email = lead.get('email', 'Unbekannt')
-                    website_content = lead.get('website_content', '')
-                    linkedin_content = lead.get('linkedin_content', '')
+                    website_content = lead.get('organization_website_url', '')
+                    linkedin_content = lead.get('linkedin_url', '')
                     
                     # Status-Update
                     st.write(f"🔄 Analysiere Lead: {name} von {company}")
@@ -55,7 +57,7 @@ def run_ai_analysis():
                     logger.debug(f"LinkedIn-Analyse für {name} abgeschlossen")
                     
                     # Bestimme Kommunikationsstil basierend auf der Position
-                    position = lead.get('position', '').lower()
+                    position = lead.get('title', '').lower()
                     communication_style = 'informal' if any(word in position for word in ['ceo', 'founder', 'owner', 'startup']) else 'formal'
                     
                     # Generiere personalisierte Nachricht
