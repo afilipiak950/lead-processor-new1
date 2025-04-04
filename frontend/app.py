@@ -639,7 +639,6 @@ elif page == "🤖 AI-Aktivitäten":
     if not ai_analyses:
         st.markdown("""
             <div style="text-align: center; padding: 3rem; background: var(--neutral-white); border-radius: 15px; margin: 2rem 0;">
-                <img src="frontend/assets/robot-empty.png" style="width: 150px; margin-bottom: 1.5rem;">
                 <h2 style="color: var(--primary-purple); margin-bottom: 1rem;">Keine AI-Analysen vorhanden</h2>
                 <p style="color: var(--neutral-black); margin-bottom: 2rem;">
                     Starten Sie den AI-Agenten, um Leads zu analysieren und personalisierte Nachrichten zu generieren.
@@ -653,114 +652,6 @@ elif page == "🤖 AI-Aktivitäten":
                 scheduler.run_immediately()
                 st.success("✅ AI-Agent hat die Verarbeitung abgeschlossen!")
     else:
-        # Metriken mit modernem Design
-        st.markdown('<div class="metrics-container">', unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown(f"""
-                <div class="metric" style="border-left: 4px solid var(--primary-orange);">
-                    <h3>Analysierte Leads</h3>
-                    <p class="metric-value">{len(ai_analyses)}</p>
-                    <p class="metric-delta">Gesamt</p>
-                </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            formal_count = len([a for a in ai_analyses if a.get('communication_style') == 'formal'])
-            informal_count = len([a for a in ai_analyses if a.get('communication_style') == 'informal'])
-            st.markdown(f"""
-                <div class="metric" style="border-left: 4px solid var(--primary-pink);">
-                    <h3>Kommunikationsstile</h3>
-                    <p class="metric-value">{formal_count}/{informal_count}</p>
-                    <p class="metric-delta">Formal/Informal</p>
-                </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            active_count = len([a for a in ai_analyses if a.get('status') == 'aktiv'])
-            st.markdown(f"""
-                <div class="metric" style="border-left: 4px solid var(--primary-purple);">
-                    <h3>Aktive Leads</h3>
-                    <p class="metric-value">{active_count}</p>
-                    <p class="metric-delta">Bereit für Kontakt</p>
-                </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Diagramme mit Amplifa-Design
-        st.markdown('<div class="charts-container">', unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-                <h3 style="color: var(--primary-pink); margin: 1.5rem 0;">
-                    📊 Kommunikationsstil-Verteilung
-                </h3>
-            """, unsafe_allow_html=True)
-            
-            style_data = pd.DataFrame(ai_analyses)
-            style_counts = style_data['communication_style'].value_counts()
-            
-            fig = px.pie(
-                values=style_counts.values,
-                names=style_counts.index,
-                hole=0.6,
-                color_discrete_sequence=['#DF2975', '#AC1ACC']
-            )
-            fig.update_traces(textposition='outside', textinfo='percent+label')
-            fig.update_layout(
-                showlegend=True,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                ),
-                margin=dict(t=0, l=0, r=0, b=0)
-            )
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        
-        with col2:
-            st.markdown("""
-                <h3 style="color: var(--primary-purple); margin: 1.5rem 0;">
-                    📈 Lead-Status Übersicht
-                </h3>
-            """, unsafe_allow_html=True)
-            
-            status_counts = style_data['status'].value_counts()
-            
-            fig = px.pie(
-                values=status_counts.values,
-                names=status_counts.index,
-                hole=0.6,
-                color_discrete_sequence=['#F4AC37', '#DF2975', '#AC1ACC']
-            )
-            fig.update_traces(textposition='outside', textinfo='percent+label')
-            fig.update_layout(
-                showlegend=True,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                ),
-                margin=dict(t=0, l=0, r=0, b=0)
-            )
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Detaillierte Analysen mit modernem Design
-        st.markdown("""
-            <h3 style="color: var(--primary-orange); margin: 2rem 0 1rem 0;">
-                📋 Lead-Analysen
-            </h3>
-        """, unsafe_allow_html=True)
-        
         # Suchfilter mit Amplifa-Design
         search = st.text_input(
             "🔍 Suche in Analysen",
@@ -768,68 +659,148 @@ elif page == "🤖 AI-Aktivitäten":
             help="Suchen Sie nach Name, Unternehmen oder E-Mail"
         )
         
-        # Gefilterte Analysen
-        filtered_analyses = ai_analyses
-        if search:
-            filtered_analyses = [
-                a for a in ai_analyses
-                if search.lower() in a.get('name', '').lower() or
-                   search.lower() in a.get('company', '').lower() or
-                   search.lower() in a.get('email', '').lower()
-            ]
+        # Konvertiere Analysen in DataFrame für bessere Darstellung
+        analyses_data = []
+        for analysis in ai_analyses:
+            analyses_data.append({
+                'name': analysis.get('name', 'Unbekannt'),
+                'company': analysis.get('company', 'Unbekannt'),
+                'email': analysis.get('email', 'Unbekannt'),
+                'website_summary': analysis.get('website_summary', 'Keine Zusammenfassung verfügbar'),
+                'linkedin_summary': analysis.get('linkedin_summary', 'Keine Zusammenfassung verfügbar'),
+                'personalized_message': analysis.get('personalized_message', 'Keine Nachricht verfügbar'),
+                'status': analysis.get('status', 'Unbekannt'),
+                'communication_style': analysis.get('communication_style', 'Unbekannt')
+            })
         
-        # Zeige die Analysen im Amplifa-Design
-        for analysis in filtered_analyses:
-            with st.expander(f"📊 {analysis.get('name', 'Unbekannt')} - {analysis.get('company', 'Unbekannt')}"):
-                st.markdown("""
-                    <div style="background: var(--neutral-white); padding: 1.5rem; border-radius: 15px; margin-bottom: 1rem;">
+        df_analyses = pd.DataFrame(analyses_data)
+        
+        # Filter basierend auf Suche
+        if search:
+            mask = (
+                df_analyses['name'].str.contains(search, case=False) |
+                df_analyses['company'].str.contains(search, case=False) |
+                df_analyses['email'].str.contains(search, case=False)
+            )
+            df_analyses = df_analyses[mask]
+        
+        # Zeige die Analysen in einer interaktiven Tabelle
+        st.markdown("""
+            <div style="background: var(--neutral-white); padding: 1.5rem; border-radius: 15px; margin: 2rem 0;">
+                <h3 style="color: var(--primary-purple); margin-bottom: 1rem;">
+                    📊 Lead-Analysen Übersicht
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.dataframe(
+            df_analyses,
+            column_config={
+                "name": st.column_config.Column(
+                    "Name",
+                    help="Name des Leads",
+                    width="medium"
+                ),
+                "company": st.column_config.Column(
+                    "Unternehmen",
+                    help="Firmenname",
+                    width="medium"
+                ),
+                "email": st.column_config.Column(
+                    "E-Mail",
+                    help="E-Mail-Adresse",
+                    width="medium"
+                ),
+                "website_summary": st.column_config.TextColumn(
+                    "Website Analyse",
+                    help="Zusammenfassung der Website-Analyse",
+                    width="large",
+                    max_chars=50
+                ),
+                "linkedin_summary": st.column_config.TextColumn(
+                    "LinkedIn Analyse",
+                    help="Zusammenfassung der LinkedIn-Analyse",
+                    width="large",
+                    max_chars=50
+                ),
+                "personalized_message": st.column_config.TextColumn(
+                    "Personalisierte Nachricht",
+                    help="Generierte Outreach-Nachricht",
+                    width="large",
+                    max_chars=50
+                ),
+                "status": st.column_config.SelectboxColumn(
+                    "Status",
+                    help="Aktueller Status des Leads",
+                    width="small",
+                    options=["aktiv", "inaktiv", "abgeschlossen"]
+                ),
+                "communication_style": st.column_config.SelectboxColumn(
+                    "Kommunikationsstil",
+                    help="Bevorzugter Kommunikationsstil",
+                    width="small",
+                    options=["formal", "informal"]
+                )
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+        
+        # Detailansicht für ausgewählten Lead
+        st.markdown("""
+            <div style="background: var(--neutral-white); padding: 1.5rem; border-radius: 15px; margin: 2rem 0;">
+                <h3 style="color: var(--primary-orange); margin-bottom: 1rem;">
+                    📋 Detailansicht
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        selected_lead = st.selectbox(
+            "Wählen Sie einen Lead für die Detailansicht",
+            options=df_analyses['name'].tolist()
+        )
+        
+        if selected_lead:
+            lead_data = df_analyses[df_analyses['name'] == selected_lead].iloc[0]
+            
+            st.markdown("""
+                <div style="background: var(--neutral-gray); padding: 1.5rem; border-radius: 15px;">
+            """, unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"""
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: var(--primary-purple);">👤 Kontaktinformationen</h4>
+                        <p><strong>Name:</strong> {lead_data['name']}</p>
+                        <p><strong>Unternehmen:</strong> {lead_data['company']}</p>
+                        <p><strong>E-Mail:</strong> {lead_data['email']}</p>
+                        <p><strong>Status:</strong> {lead_data['status']}</p>
+                        <p><strong>Kommunikationsstil:</strong> {lead_data['communication_style']}</p>
+                    </div>
                 """, unsafe_allow_html=True)
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown(f"""
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--primary-purple);">👤 Kontaktinformationen</h4>
-                            <p><strong>Name:</strong> {analysis.get('name', 'Unbekannt')}</p>
-                            <p><strong>Unternehmen:</strong> {analysis.get('company', 'Unbekannt')}</p>
-                            <p><strong>E-Mail:</strong> {analysis.get('email', 'Unbekannt')}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    st.markdown(f"""
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--primary-pink);">📈 Status</h4>
-                            <p><strong>Status:</strong> {analysis.get('status', 'Unbekannt')}</p>
-                            <p><strong>Kommunikationsstil:</strong> {analysis.get('communication_style', 'Unbekannt')}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                if analysis.get('website'):
-                    st.markdown(f"""
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--primary-orange);">🌐 Website-Analyse</h4>
-                            <p>{analysis.get('website_summary', 'Keine Zusammenfassung verfügbar')}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                if analysis.get('linkedin_summary'):
-                    st.markdown(f"""
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--accent-blue-medium);">👥 LinkedIn-Analyse</h4>
-                            <p>{analysis.get('linkedin_summary', 'Keine Zusammenfassung verfügbar')}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                st.markdown("""
-                    <div style="margin-top: 1rem; padding: 1rem; background: var(--neutral-gray); border-radius: 10px;">
-                        <h4 style="color: var(--primary-purple);">✉️ Personalisierte Nachricht</h4>
+            
+            with col2:
+                st.markdown(f"""
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: var(--primary-pink);">🔍 Analysen</h4>
+                        <p><strong>Website-Analyse:</strong></p>
+                        <p>{lead_data['website_summary']}</p>
+                        <p><strong>LinkedIn-Analyse:</strong></p>
+                        <p>{lead_data['linkedin_summary']}</p>
+                    </div>
                 """, unsafe_allow_html=True)
-                
-                st.markdown(analysis.get('personalized_message', 'Keine Nachricht verfügbar'))
-                
-                st.markdown("</div></div>", unsafe_allow_html=True)
+            
+            st.markdown("""
+                <div style="margin-top: 1rem;">
+                    <h4 style="color: var(--primary-orange);">✉️ Personalisierte Nachricht</h4>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(lead_data['personalized_message'])
+            
+            st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Einstellungen-Seite
 elif page == "⚙️ Einstellungen":
