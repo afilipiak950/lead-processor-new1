@@ -165,45 +165,22 @@ class AIAgent:
         return results
 
 # Funktion zum Abrufen von Leads von Apify
-def get_leads_from_apify(api_key: Optional[str] = None, actor_id: Optional[str] = None) -> List[Dict]:
+def get_leads_from_apify(api_key: Optional[str] = None, dataset_id: Optional[str] = None) -> List[Dict]:
     """Ruft Leads von Apify ab."""
-    apify_key = api_key or os.getenv("APIFY_API_KEY")
-    apify_actor_id = actor_id or os.getenv("APIFY_ACTOR_ID")
-    
-    if not apify_key or not apify_actor_id:
-        st.error("Apify API-Key oder Actor-ID nicht gefunden. Bitte als Umgebungsvariablen setzen.")
-        return []
-    
     try:
-        # Apify API-Endpunkt für Actor
-        url = f"https://api.apify.com/v2/acts/{apify_actor_id}/runs?token={apify_key}"
+        # Verwende die direkte Dataset-URL
+        url = "https://api.apify.com/v2/datasets/AGXiSRbH72qL6OFGs/items?token=apify_api_NOVzYHdbHojPZaa8HlulffsrqBE7Ka1M3y8G"
         
-        # Starte einen neuen Run
-        response = requests.post(url, json={
-            "memory": 4096,
-            "timeout": 300
-        })
+        response = requests.get(url)
         response.raise_for_status()
-        run_id = response.json()["data"]["id"]
+        leads = response.json()
         
-        # Warte auf Abschluss und hole die Ergebnisse
-        while True:
-            status_url = f"https://api.apify.com/v2/acts/runs/{run_id}?token={apify_key}"
-            status_response = requests.get(status_url)
-            status_response.raise_for_status()
-            status = status_response.json()["data"]["status"]
+        if not leads:
+            st.warning("Keine Leads im Dataset gefunden.")
+            return []
             
-            if status == "SUCCEEDED":
-                # Hole die Ergebnisse
-                results_url = f"https://api.apify.com/v2/acts/runs/{run_id}/dataset/items?token={apify_key}"
-                results_response = requests.get(results_url)
-                results_response.raise_for_status()
-                return results_response.json()
-            elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                st.error(f"Apify Run fehlgeschlagen mit Status: {status}")
-                return []
-            
-            time.sleep(5)  # Warte 5 Sekunden vor dem nächsten Check
+        st.success(f"{len(leads)} Leads erfolgreich abgerufen!")
+        return leads
             
     except Exception as e:
         st.error(f"Fehler beim Abrufen der Leads von Apify: {str(e)}")
