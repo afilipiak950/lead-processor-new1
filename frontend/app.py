@@ -25,7 +25,8 @@ load_dotenv()
 logger.debug("Konfiguriere Streamlit-Seite...")
 st.set_page_config(
     page_title="Amplifa Lead Processor",
-    page_icon="frontend/assets/favicon.ico",
+    # page_icon="frontend/assets/favicon.ico",  # Temporär deaktiviert
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -153,7 +154,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Logo und Header
-st.sidebar.image("frontend/assets/amplifa-logo.png", width=200)
+# st.sidebar.image("frontend/assets/amplifa-logo.png", width=200)  # Temporär deaktiviert
 st.sidebar.title("🚀 Lead Processor")
 
 # Beispieldaten (Fallback)
@@ -243,29 +244,59 @@ scheduler = get_scheduler(max_leads_per_day=50)
 
 # Sidebar mit verbessertem Design
 with st.sidebar:
-    st.image("https://img.icons8.com/clouds/200/000000/rocket.png", width=100)
     st.title("🚀 Lead Processor")
     st.markdown("---")
     
+    # Vereinfachte Navigation
     page = st.radio(
         "Navigation",
-        ["📊 Dashboard", "👥 Leads", "🤖 AI-Aktivitäten", "⚙️ Einstellungen"],
-        label_visibility="collapsed"
+        options=["📊 Dashboard", "👥 Leads", "🤖 AI-Aktivitäten", "⚙️ Einstellungen"]
     )
     
     st.markdown("---")
-    st.markdown("### Quick Actions")
-    if st.button("🔄 Daten aktualisieren"):
+    
+    # Quick Actions
+    if st.button("🔄 Daten aktualisieren", use_container_width=True):
         st.cache_data.clear()
-        st.success("Daten wurden aktualisiert!")
+        st.rerun()
+    
+    if st.button("🚀 AI-Agent starten", use_container_width=True):
+        with st.spinner("🤖 AI-Agent verarbeitet Leads..."):
+            scheduler.run_immediately()
+            st.success("✅ Verarbeitung gestartet!")
+            st.rerun()
     
     st.markdown("---")
+    
+    # System Status
     st.markdown("### System Status")
     last_run = scheduler.get_last_run()
     if last_run:
-        st.info(f"🟢 System läuft (Letzte Aktualisierung: {last_run.strftime('%d.%m.%Y %H:%M')})")
+        st.info(f"🟢 System läuft\n\nLetzte Aktualisierung:\n{last_run.strftime('%d.%m.%Y %H:%M')}")
     else:
-        st.info("🟡 System bereit (Noch keine Aktualisierung)")
+        st.warning("🟡 System wartet auf erste Ausführung")
+
+# Hauptbereich
+st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+        color: var(--neutral-white);
+    }
+    section[data-testid="stSidebar"] .stRadio label {
+        color: var(--neutral-white) !important;
+    }
+    section[data-testid="stSidebar"] button {
+        background: var(--neutral-white) !important;
+        color: var(--primary-purple) !important;
+        border: none !important;
+    }
+    section[data-testid="stSidebar"] button:hover {
+        background: var(--neutral-gray) !important;
+        transform: translateY(-2px);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Dashboard-Seite
 if page == "📊 Dashboard":
