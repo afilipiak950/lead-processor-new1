@@ -78,11 +78,11 @@ class AIAgent:
             return self.analysis_cache[cache_key]
         
         # Scrape Website
-        website_url = lead.get('website', '')
+        website_url = lead.get('organization_website_url', '')
         website_content = self.scrape_website(website_url) if website_url else "Keine Website verfügbar"
         
-        # Scrape LinkedIn (vereinfacht)
-        linkedin_url = lead.get('linkedin', '')
+        # Scrape LinkedIn
+        linkedin_url = lead.get('linkedin_url', '')
         linkedin_content = self.scrape_website(linkedin_url) if linkedin_url else "Kein LinkedIn-Profil verfügbar"
         
         # Erstelle Prompt für den LLM
@@ -125,8 +125,8 @@ class AIAgent:
             # Füge Original-Lead-Daten hinzu
             result.update({
                 'email': lead.get('email', ''),
-                'website': lead.get('website', ''),
-                'linkedin': lead.get('linkedin', ''),
+                'website': lead.get('organization_website_url', ''),
+                'linkedin': lead.get('linkedin_url', ''),
                 'timestamp': datetime.now().isoformat()
             })
             
@@ -145,8 +145,8 @@ class AIAgent:
                 'personalized_message': "Fehler bei der Analyse",
                 'status': "inaktiv",
                 'email': lead.get('email', ''),
-                'website': lead.get('website', ''),
-                'linkedin': lead.get('linkedin', ''),
+                'website': lead.get('organization_website_url', ''),
+                'linkedin': lead.get('linkedin_url', ''),
                 'timestamp': datetime.now().isoformat()
             }
     
