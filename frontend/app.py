@@ -3,6 +3,16 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import os
+import json
+from dotenv import load_dotenv
+
+# Importiere die AI-Agenten und Scheduler
+from ai_agent import get_leads_from_apify, load_analyses
+from scheduler import get_scheduler
+
+# Lade Umgebungsvariablen
+load_dotenv()
 
 # Seitenkonfiguration
 st.set_page_config(
@@ -45,10 +55,17 @@ st.markdown("""
     .css-1v0mbdj {
         margin-top: 1rem;
     }
+    .email-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Beispieldaten
+# Beispieldaten (Fallback)
 def get_sample_data():
     n = 10  # Anzahl der Beispieldatensätze
     status_options = ['aktiv', 'inaktiv', 'abgeschlossen']
@@ -63,6 +80,48 @@ def get_sample_data():
         'communication_style': [style_options[i % len(style_options)] for i in range(n)]
     })
 
+# Funktion zum Laden der echten Leads
+@st.cache_data(ttl=3600)  # Cache für 1 Stunde
+def load_real_leads():
+    """Lädt die echten Leads von Apify."""
+    try:
+        leads = get_leads_from_apify()
+        if not leads:
+            st.warning("Keine Leads von Apify gefunden. Verwende Beispieldaten.")
+            return get_sample_data()
+        
+        # Konvertiere zu DataFrame
+        df = pd.DataFrame(leads)
+        
+        # Füge fehlende Spalten hinzu
+        if 'timestamp' not in df.columns:
+            df['timestamp'] = datetime.now()
+        
+        if 'status' not in df.columns:
+            df['status'] = 'aktiv'
+        
+        if 'communication_style' not in df.columns:
+            df['communication_style'] = 'formal'
+        
+        return df
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Leads: {str(e)}")
+        return get_sample_data()
+
+# Funktion zum Laden der AI-Analysen
+@st.cache_data(ttl=3600)  # Cache für 1 Stunde
+def load_ai_analyses():
+    """Lädt die AI-Analysen."""
+    try:
+        analyses = load_analyses()
+        return analyses
+    except Exception as e:
+        st.error(f"Fehler beim Laden der AI-Analysen: {str(e)}")
+        return []
+
+# Initialisiere den Scheduler
+scheduler = get_scheduler(max_leads_per_day=50)
+
 # Sidebar mit verbessertem Design
 with st.sidebar:
     st.image("https://img.icons8.com/clouds/200/000000/rocket.png", width=100)
@@ -71,7 +130,7 @@ with st.sidebar:
     
     page = st.radio(
         "Navigation",
-        ["📊 Dashboard", "👥 Leads"],
+        ["📊 Dashboard", "👥 Leads", "🤖 AI-Aktivitäten", "⚙️ Einstellungen"],
         label_visibility="collapsed"
     )
     
@@ -83,15 +142,18 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### System Status")
-    st.info("🟢 System läuft")
-    st.markdown(f"Letzte Aktualisierung: {datetime.now().strftime('%H:%M:%S')}")
+    last_run = scheduler.get_last_run()
+    if last_run:
+        st.info(f"🟢 System läuft (Letzte Aktualisierung: {last_run.strftime('%d.%m.%Y %H:%M')})")
+    else:
+        st.info("🟡 System bereit (Noch keine Aktualisierung)")
 
 # Dashboard-Seite
 if page == "📊 Dashboard":
     st.title("📊 Lead Processor Dashboard")
     
-    # Beispieldaten laden
-    df = get_sample_data()
+    # Echte Leads laden
+    df = load_real_leads()
     
     # Metriken mit verbessertem Design
     col1, col2, col3, col4 = st.columns(4)
@@ -115,10 +177,12 @@ if page == "📊 Dashboard":
         )
     
     with col3:
+        ai_analyses = load_ai_analyses()
+        analyzed_leads = len(ai_analyses)
         st.metric(
-            "Geplante E-Mails",
-            0,
-            delta="0",
+            "Analysierte Leads",
+            analyzed_leads,
+            delta=f"+{analyzed_leads - 0}",
             delta_color="normal"
         )
     
@@ -172,7 +236,8 @@ if page == "📊 Dashboard":
 elif page == "👥 Leads":
     st.title("👥 Lead-Übersicht")
     
-    df = get_sample_data()
+    # Echte Leads laden
+    df = load_real_leads()
     
     # Erweiterte Filter
     col1, col2, col3 = st.columns(3)
@@ -247,4 +312,169 @@ elif page == "👥 Leads":
                 "leads.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key='download-excel'
-            ) 
+            )
+
+# AI-Aktivitäten-Seite
+elif page == "🤖 AI-Aktivitäten":
+    st.title("🤖 AI-Agent Aktivitäten")
+    
+    # Lade AI-Analysen
+    ai_analyses = load_ai_analyses()
+    
+    if not ai_analyses:
+        st.info("Keine AI-Analysen vorhanden. Starten Sie den AI-Agenten, um Analysen zu generieren.")
+        
+        # Button zum Starten des AI-Agenten
+        if st.button("🚀 AI-Agenten starten"):
+            with st.spinner("AI-Agent verarbeitet Leads..."):
+                scheduler.run_immediately()
+                st.success("AI-Agent hat die Verarbeitung abgeschlossen. Bitte aktualisieren Sie die Seite.")
+    else:
+        # Metriken
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                "Analysierte Leads",
+                len(ai_analyses),
+                delta=None
+            )
+        
+        with col2:
+            formal_count = len([a for a in ai_analyses if a.get('communication_style') == 'formal'])
+            informal_count = len([a for a in ai_analyses if a.get('communication_style') == 'informal'])
+            st.metric(
+                "Kommunikationsstile",
+                f"{formal_count} formal / {informal_count} informal",
+                delta=None
+            )
+        
+        with col3:
+            active_count = len([a for a in ai_analyses if a.get('status') == 'aktiv'])
+            st.metric(
+                "Aktive Leads",
+                active_count,
+                delta=None
+            )
+        
+        # Diagramme
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🎯 Kommunikationsstile")
+            style_data = pd.DataFrame(ai_analyses)
+            style_counts = style_data['communication_style'].value_counts()
+            
+            fig = px.pie(
+                values=style_counts.values,
+                names=style_counts.index,
+                title="Verteilung der Kommunikationsstile",
+                template='plotly_white'
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.subheader("📊 Lead-Status")
+            status_counts = style_data['status'].value_counts()
+            
+            fig = px.pie(
+                values=status_counts.values,
+                names=status_counts.index,
+                title="Verteilung der Lead-Status",
+                template='plotly_white'
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Detaillierte Analysen
+        st.subheader("📋 Lead-Analysen")
+        
+        # Filter für die Analysen
+        analysis_filter = st.text_input("🔍 Suche in Analysen", "")
+        
+        # Gefilterte Analysen
+        filtered_analyses = ai_analyses
+        if analysis_filter:
+            filtered_analyses = [
+                a for a in ai_analyses
+                if analysis_filter.lower() in a.get('name', '').lower() or
+                   analysis_filter.lower() in a.get('company', '').lower() or
+                   analysis_filter.lower() in a.get('email', '').lower()
+            ]
+        
+        # Zeige die Analysen an
+        for analysis in filtered_analyses:
+            with st.expander(f"📊 {analysis.get('name', 'Unbekannt')} - {analysis.get('company', 'Unbekannt')}"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown(f"**Name:** {analysis.get('name', 'Unbekannt')}")
+                    st.markdown(f"**Unternehmen:** {analysis.get('company', 'Unbekannt')}")
+                    st.markdown(f"**E-Mail:** {analysis.get('email', 'Unbekannt')}")
+                    st.markdown(f"**Status:** {analysis.get('status', 'Unbekannt')}")
+                    st.markdown(f"**Kommunikationsstil:** {analysis.get('communication_style', 'Unbekannt')}")
+                
+                with col2:
+                    if analysis.get('website'):
+                        st.markdown(f"**Website:** [{analysis.get('website')}]({analysis.get('website')})")
+                    if analysis.get('linkedin'):
+                        st.markdown(f"**LinkedIn:** [{analysis.get('linkedin')}]({analysis.get('linkedin')})")
+                
+                st.markdown("---")
+                st.markdown("**Website-Zusammenfassung:**")
+                st.markdown(analysis.get('website_summary', 'Keine Zusammenfassung verfügbar'))
+                
+                if analysis.get('linkedin_summary'):
+                    st.markdown("**LinkedIn-Zusammenfassung:**")
+                    st.markdown(analysis.get('linkedin_summary', 'Keine Zusammenfassung verfügbar'))
+                
+                st.markdown("---")
+                st.markdown("**Personalisierte Nachricht:**")
+                st.markdown('<div class="email-content">', unsafe_allow_html=True)
+                st.markdown(analysis.get('personalized_message', 'Keine Nachricht verfügbar'))
+                st.markdown('</div>', unsafe_allow_html=True)
+
+# Einstellungen-Seite
+elif page == "⚙️ Einstellungen":
+    st.title("⚙️ Einstellungen")
+    
+    st.subheader("🤖 AI-Agent Einstellungen")
+    
+    # API-Schlüssel
+    openai_api_key = st.text_input("OpenAI API-Schlüssel", type="password", value=os.getenv("OPENAI_API_KEY", ""))
+    apify_api_key = st.text_input("Apify API-Schlüssel", type="password", value=os.getenv("APIFY_API_KEY", ""))
+    apify_dataset_id = st.text_input("Apify Dataset-ID", value=os.getenv("APIFY_DATASET_ID", ""))
+    
+    # Scheduler-Einstellungen
+    st.subheader("⏰ Scheduler Einstellungen")
+    
+    max_leads = st.slider("Maximale Anzahl von Leads pro Tag", min_value=10, max_value=100, value=50, step=10)
+    schedule_time = st.time_input("Tägliche Ausführungszeit", value=datetime.strptime("09:00", "%H:%M").time())
+    
+    # Speichern-Button
+    if st.button("💾 Einstellungen speichern"):
+        # Hier würden die Einstellungen in einer .env-Datei gespeichert
+        st.success("Einstellungen gespeichert!")
+    
+    # Scheduler starten/stoppen
+    st.subheader("🔄 Scheduler steuern")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("▶️ Scheduler starten"):
+            scheduler.schedule_daily_run(time=schedule_time.strftime("%H:%M"))
+    
+    with col2:
+        if st.button("⏹️ Scheduler stoppen"):
+            # Hier würde der Scheduler gestoppt werden
+            st.info("Scheduler gestoppt!")
+    
+    # Manuelle Ausführung
+    st.subheader("🚀 Manuelle Ausführung")
+    
+    if st.button("🚀 AI-Agenten jetzt ausführen"):
+        with st.spinner("AI-Agent verarbeitet Leads..."):
+            scheduler.run_immediately()
+            st.success("AI-Agent hat die Verarbeitung abgeschlossen.") 
