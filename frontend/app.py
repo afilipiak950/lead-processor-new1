@@ -50,13 +50,17 @@ st.markdown("""
 
 # Beispieldaten
 def get_sample_data():
+    n = 10  # Anzahl der Beispieldatensätze
+    status_options = ['aktiv', 'inaktiv', 'abgeschlossen']
+    style_options = ['formal', 'informal']
+    
     return pd.DataFrame({
-        'timestamp': pd.date_range(start='2024-01-01', periods=10),
-        'name': ['Lead ' + str(i) for i in range(1, 11)],
-        'email': [f'lead{i}@example.com' for i in range(1, 11)],
-        'company': [f'Company {i}' for i in range(1, 11)],
-        'status': ['aktiv', 'inaktiv', 'abgeschlossen'] * 4,
-        'communication_style': ['formal', 'informal'] * 5
+        'timestamp': pd.date_range(start='2024-01-01', periods=n),
+        'name': [f'Lead {i+1}' for i in range(n)],
+        'email': [f'lead{i+1}@example.com' for i in range(n)],
+        'company': [f'Company {i+1}' for i in range(n)],
+        'status': [status_options[i % len(status_options)] for i in range(n)],
+        'communication_style': [style_options[i % len(style_options)] for i in range(n)]
     })
 
 # Sidebar mit verbessertem Design
