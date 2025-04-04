@@ -329,9 +329,57 @@ with st.sidebar:
     
     if st.button("🚀 AI-Agent starten", use_container_width=True):
         with st.spinner("🤖 AI-Agent verarbeitet Leads..."):
-            scheduler.run_immediately()
-            st.success("✅ Verarbeitung gestartet!")
-            st.rerun()
+            try:
+                # Container für Live-Updates
+                status_container = st.empty()
+                progress_container = st.empty()
+                detail_container = st.empty()
+                
+                # Führe AI-Analyse durch
+                agent = AIAgent()
+                leads = get_leads_from_apify()
+                
+                if not leads:
+                    st.warning("⚠️ Keine neuen Leads zur Analyse gefunden.")
+                else:
+                    total_leads = len(leads)
+                    progress_bar = progress_container.progress(0)
+                    
+                    analyses = []
+                    for idx, lead in enumerate(leads):
+                        # Update Status
+                        status_container.info(f"🔄 Analysiere Lead {idx + 1} von {total_leads}: {lead.get('name', 'Unbekannt')}")
+                        
+                        # Führe Analyse durch
+                        analysis = agent.analyze_lead(lead)
+                        analyses.append(analysis)
+                        
+                        # Zeige Details der aktuellen Analyse
+                        with detail_container.container():
+                            st.markdown(f"""
+                                <div style="background: var(--neutral-gray); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                                    <h4>🎯 Aktuelle Analyse für {analysis.get('name', 'Unbekannt')}</h4>
+                                    <p><strong>Website-Analyse:</strong><br>{analysis.get('website_summary', 'Wird analysiert...')}</p>
+                                    <p><strong>LinkedIn-Analyse:</strong><br>{analysis.get('linkedin_summary', 'Wird analysiert...')}</p>
+                                    <p><strong>Generierte Nachricht:</strong><br>{analysis.get('personalized_message', 'Wird generiert...')}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Update Progress
+                        progress_bar.progress((idx + 1) / total_leads)
+                    
+                    # Speichere neue Analysen
+                    if analyses:
+                        existing_analyses = load_analyses()
+                        all_analyses = existing_analyses + analyses
+                        save_analyses(all_analyses)
+                        st.success(f"✅ {len(analyses)} Leads erfolgreich analysiert!")
+                        
+                        # Cache löschen und Seite neu laden
+                        load_ai_analyses.clear()
+                        st.rerun()
+            except Exception as e:
+                st.error(f"❌ Fehler beim Ausführen der AI-Analyse: {str(e)}")
     
     st.markdown("---")
     
@@ -699,59 +747,75 @@ elif page == "🤖 AI-Aktivitäten":
         </div>
     """, unsafe_allow_html=True)
     
-    # Lade AI-Analysen mit Animation
-    with st.spinner("🔄 Lade AI-Analysen..."):
-        ai_analyses = load_ai_analyses()
+    # Lade AI-Analysen
+    ai_analyses = load_ai_analyses()
     
-    if not ai_analyses:
-        st.markdown("""
-            <div style="text-align: center; padding: 3rem; background: var(--neutral-white); border-radius: 15px; margin: 2rem 0;">
-                <h2 style="color: var(--primary-purple); margin-bottom: 1rem;">Keine AI-Analysen vorhanden</h2>
-                <p style="color: var(--neutral-black); margin-bottom: 2rem;">
-                    Starten Sie den AI-Agenten, um Leads zu analysieren und personalisierte Nachrichten zu generieren.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Button zum Starten des AI-Agenten
-        if st.button("🚀 AI-Agenten starten", key="start_ai_agent", type="primary"):
-            with st.spinner("🤖 AI-Agent verarbeitet Leads..."):
-                try:
-                    # Führe AI-Analyse durch
-                    new_analyses = run_ai_analysis()
-                    if new_analyses:
-                        st.success(f"✅ AI-Agent hat {len(new_analyses)} Leads erfolgreich analysiert!")
-                        # Cache löschen, damit die neuen Analysen angezeigt werden
+    # Button zum Starten des AI-Agenten
+    if st.button("🚀 AI-Agenten starten", key="start_ai_agent", type="primary"):
+        with st.spinner("🤖 AI-Agent wird initialisiert..."):
+            try:
+                # Container für Live-Updates
+                status_container = st.empty()
+                progress_container = st.empty()
+                detail_container = st.empty()
+                
+                # Führe AI-Analyse durch
+                agent = AIAgent()
+                leads = get_leads_from_apify()
+                
+                if not leads:
+                    st.warning("⚠️ Keine neuen Leads zur Analyse gefunden.")
+                else:
+                    total_leads = len(leads)
+                    progress_bar = progress_container.progress(0)
+                    
+                    analyses = []
+                    for idx, lead in enumerate(leads):
+                        # Update Status
+                        status_container.info(f"🔄 Analysiere Lead {idx + 1} von {total_leads}: {lead.get('name', 'Unbekannt')}")
+                        
+                        # Führe Analyse durch
+                        analysis = agent.analyze_lead(lead)
+                        analyses.append(analysis)
+                        
+                        # Zeige Details der aktuellen Analyse
+                        with detail_container.container():
+                            st.markdown(f"""
+                                <div style="background: var(--neutral-gray); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                                    <h4>🎯 Aktuelle Analyse für {analysis.get('name', 'Unbekannt')}</h4>
+                                    <p><strong>Website-Analyse:</strong><br>{analysis.get('website_summary', 'Wird analysiert...')}</p>
+                                    <p><strong>LinkedIn-Analyse:</strong><br>{analysis.get('linkedin_summary', 'Wird analysiert...')}</p>
+                                    <p><strong>Generierte Nachricht:</strong><br>{analysis.get('personalized_message', 'Wird generiert...')}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Update Progress
+                        progress_bar.progress((idx + 1) / total_leads)
+                    
+                    # Speichere neue Analysen
+                    if analyses:
+                        existing_analyses = load_analyses()
+                        all_analyses = existing_analyses + analyses
+                        save_analyses(all_analyses)
+                        st.success(f"✅ {len(analyses)} Leads erfolgreich analysiert!")
+                        
+                        # Cache löschen und Seite neu laden
                         load_ai_analyses.clear()
-                        # Seite neu laden
                         st.rerun()
-                    else:
-                        st.warning("⚠️ Keine neuen Leads zur Analyse gefunden.")
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Ausführen der AI-Analyse: {str(e)}")
-    else:
-        # Suchfilter mit Amplifa-Design
+            except Exception as e:
+                st.error(f"❌ Fehler beim Ausführen der AI-Analyse: {str(e)}")
+    
+    # Zeige gespeicherte Analysen
+    if ai_analyses:
+        # Suchfilter
         search = st.text_input(
             "🔍 Suche in Analysen",
             key="analysis_search",
             help="Suchen Sie nach Name, Unternehmen oder E-Mail"
         )
         
-        # Konvertiere Analysen in DataFrame für bessere Darstellung
-        analyses_data = []
-        for analysis in ai_analyses:
-            analyses_data.append({
-                'name': analysis.get('name', 'Unbekannt'),
-                'company': analysis.get('company', 'Unbekannt'),
-                'email': analysis.get('email', 'Unbekannt'),
-                'website_summary': analysis.get('website_summary', 'Keine Zusammenfassung verfügbar'),
-                'linkedin_summary': analysis.get('linkedin_summary', 'Keine Zusammenfassung verfügbar'),
-                'personalized_message': analysis.get('personalized_message', 'Keine Nachricht verfügbar'),
-                'status': analysis.get('status', 'Unbekannt'),
-                'communication_style': analysis.get('communication_style', 'Unbekannt')
-            })
-        
-        df_analyses = pd.DataFrame(analyses_data)
+        # Konvertiere Analysen in DataFrame
+        df_analyses = pd.DataFrame(ai_analyses)
         
         # Filter basierend auf Suche
         if search:
@@ -762,11 +826,11 @@ elif page == "🤖 AI-Aktivitäten":
             )
             df_analyses = df_analyses[mask]
         
-        # Zeige die Analysen in einer interaktiven Tabelle
+        # Zeige Übersichtstabelle
         st.markdown("""
             <div style="background: var(--neutral-white); padding: 1.5rem; border-radius: 15px; margin: 2rem 0;">
                 <h3 style="color: var(--primary-purple); margin-bottom: 1rem;">
-                    📊 Lead-Analysen Übersicht
+                    📊 Generierte Analysen
                 </h3>
             </div>
         """, unsafe_allow_html=True)
@@ -774,111 +838,54 @@ elif page == "🤖 AI-Aktivitäten":
         st.dataframe(
             df_analyses,
             column_config={
-                "name": st.column_config.Column(
-                    "Name",
-                    help="Name des Leads",
-                    width="medium"
-                ),
-                "company": st.column_config.Column(
-                    "Unternehmen",
-                    help="Firmenname",
-                    width="medium"
-                ),
-                "email": st.column_config.Column(
-                    "E-Mail",
-                    help="E-Mail-Adresse",
-                    width="medium"
-                ),
-                "website_summary": st.column_config.TextColumn(
-                    "Website Analyse",
-                    help="Zusammenfassung der Website-Analyse",
-                    width="large",
-                    max_chars=50
-                ),
-                "linkedin_summary": st.column_config.TextColumn(
-                    "LinkedIn Analyse",
-                    help="Zusammenfassung der LinkedIn-Analyse",
-                    width="large",
-                    max_chars=50
-                ),
-                "personalized_message": st.column_config.TextColumn(
-                    "Personalisierte Nachricht",
-                    help="Generierte Outreach-Nachricht",
-                    width="large",
-                    max_chars=50
-                ),
-                "status": st.column_config.SelectboxColumn(
-                    "Status",
-                    help="Aktueller Status des Leads",
-                    width="small",
-                    options=["aktiv", "inaktiv", "abgeschlossen"]
-                ),
-                "communication_style": st.column_config.SelectboxColumn(
-                    "Kommunikationsstil",
-                    help="Bevorzugter Kommunikationsstil",
-                    width="small",
-                    options=["formal", "informal"]
+                "name": "Name",
+                "company": "Unternehmen",
+                "email": "E-Mail",
+                "status": "Status",
+                "communication_style": "Kommunikationsstil",
+                "timestamp": st.column_config.DatetimeColumn(
+                    "Zeitstempel",
+                    format="DD.MM.YYYY HH:mm"
                 )
             },
             hide_index=True,
             use_container_width=True
         )
         
-        # Detailansicht für ausgewählten Lead
+        # Detailansicht für jeden Lead
         st.markdown("""
             <div style="background: var(--neutral-white); padding: 1.5rem; border-radius: 15px; margin: 2rem 0;">
                 <h3 style="color: var(--primary-orange); margin-bottom: 1rem;">
-                    📋 Detailansicht
+                    📋 Detaillierte Analysen
                 </h3>
             </div>
         """, unsafe_allow_html=True)
         
-        selected_lead = st.selectbox(
-            "Wählen Sie einen Lead für die Detailansicht",
-            options=df_analyses['name'].tolist()
-        )
-        
-        if selected_lead:
-            lead_data = df_analyses[df_analyses['name'] == selected_lead].iloc[0]
-            
-            st.markdown("""
-                <div style="background: var(--neutral-gray); padding: 1.5rem; border-radius: 15px;">
-            """, unsafe_allow_html=True)
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
+        for analysis in df_analyses.to_dict('records'):
+            with st.expander(f"🎯 {analysis['name']} - {analysis['company']}"):
                 st.markdown(f"""
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="color: var(--primary-purple);">👤 Kontaktinformationen</h4>
-                        <p><strong>Name:</strong> {lead_data['name']}</p>
-                        <p><strong>Unternehmen:</strong> {lead_data['company']}</p>
-                        <p><strong>E-Mail:</strong> {lead_data['email']}</p>
-                        <p><strong>Status:</strong> {lead_data['status']}</p>
-                        <p><strong>Kommunikationsstil:</strong> {lead_data['communication_style']}</p>
+                    <div style="background: var(--neutral-gray); padding: 1.5rem; border-radius: 15px;">
+                        <h4 style="color: var(--primary-purple); margin-bottom: 1rem;">👤 Kontaktinformationen</h4>
+                        <p><strong>Name:</strong> {analysis['name']}</p>
+                        <p><strong>Unternehmen:</strong> {analysis['company']}</p>
+                        <p><strong>E-Mail:</strong> {analysis['email']}</p>
+                        <p><strong>Status:</strong> {analysis['status']}</p>
+                        <p><strong>Kommunikationsstil:</strong> {analysis['communication_style']}</p>
+                        
+                        <h4 style="color: var(--primary-pink); margin: 1.5rem 0 1rem 0;">🔍 Website-Analyse</h4>
+                        <p>{analysis['website_summary']}</p>
+                        
+                        <h4 style="color: var(--primary-orange); margin: 1.5rem 0 1rem 0;">👥 LinkedIn-Analyse</h4>
+                        <p>{analysis['linkedin_summary']}</p>
+                        
+                        <h4 style="color: var(--accent-blue-medium); margin: 1.5rem 0 1rem 0;">✉️ Generierte Nachricht</h4>
+                        <div style="background: white; padding: 1rem; border-radius: 10px; border-left: 4px solid var(--primary-pink);">
+                            {analysis['personalized_message']}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown(f"""
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="color: var(--primary-pink);">🔍 Analysen</h4>
-                        <p><strong>Website-Analyse:</strong></p>
-                        <p>{lead_data['website_summary']}</p>
-                        <p><strong>LinkedIn-Analyse:</strong></p>
-                        <p>{lead_data['linkedin_summary']}</p>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("""
-                <div style="margin-top: 1rem;">
-                    <h4 style="color: var(--primary-orange);">✉️ Personalisierte Nachricht</h4>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(lead_data['personalized_message'])
-            
-            st.markdown("</div></div>", unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ Keine AI-Analysen vorhanden. Starten Sie den AI-Agenten, um Leads zu analysieren.")
 
 # Einstellungen-Seite
 elif page == "⚙️ Einstellungen":
