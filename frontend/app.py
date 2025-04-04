@@ -95,37 +95,53 @@ def load_real_leads():
     try:
         logger.debug("Versuche Leads von Apify zu laden...")
         leads = get_leads_from_apify()
+        
         if not leads:
             logger.warning("Keine Leads von Apify gefunden. Verwende Beispieldaten.")
             return get_sample_data()
         
-        logger.info(f"{len(leads)} Leads erfolgreich geladen!")
-        df = pd.DataFrame(leads)
+        logger.debug(f"Rohdaten von Apify erhalten: {len(leads)} Einträge")
+        
+        # Konvertiere zu DataFrame mit Fehlerprüfung
+        try:
+            df = pd.DataFrame(leads)
+            logger.debug(f"DataFrame erstellt mit Spalten: {df.columns.tolist()}")
+        except Exception as e:
+            logger.error(f"Fehler bei der DataFrame-Erstellung: {str(e)}")
+            return get_sample_data()
         
         # Füge fehlende Spalten hinzu
+        logger.debug("Füge fehlende Spalten hinzu...")
         if 'timestamp' not in df.columns:
             df['timestamp'] = datetime.now()
+            logger.debug("Timestamp-Spalte hinzugefügt")
         
         if 'status' not in df.columns:
-            df['status'] = 'aktiv'  # Setze Standardstatus
+            df['status'] = 'aktiv'
+            logger.debug("Status-Spalte hinzugefügt")
         
         if 'communication_style' not in df.columns:
-            df['communication_style'] = 'formal'  # Setze Standard-Kommunikationsstil
-            
+            df['communication_style'] = 'formal'
+            logger.debug("Communication-Style-Spalte hinzugefügt")
+        
         # Stelle sicher, dass alle erforderlichen Spalten vorhanden sind
         required_columns = ['name', 'email', 'company', 'status', 'communication_style', 'timestamp']
         for col in required_columns:
             if col not in df.columns:
-                if col == 'name':
-                    df[col] = df['first_name'].str.cat(df['last_name'], sep=' ')
-                elif col == 'company':
+                logger.debug(f"Erstelle {col}-Spalte...")
+                if col == 'name' and 'first_name' in df.columns and 'last_name' in df.columns:
+                    df[col] = df['first_name'].fillna('').str.cat(df['last_name'].fillna(''), sep=' ')
+                elif col == 'company' and 'organization_name' in df.columns:
                     df[col] = df['organization_name']
                 else:
                     df[col] = 'nicht verfügbar'
         
+        logger.info(f"Leads erfolgreich geladen und verarbeitet: {len(df)} Einträge")
         return df
+        
     except Exception as e:
-        logger.error(f"Fehler beim Laden der Leads: {str(e)}")
+        logger.error(f"Unerwarteter Fehler beim Laden der Leads: {str(e)}")
+        st.error(f"Fehler beim Laden der Leads: {str(e)}")
         return get_sample_data()
 
 # Funktion zum Laden der AI-Analysen
