@@ -231,12 +231,36 @@ def load_real_leads():
 # Funktion zum Laden der AI-Analysen
 @st.cache_data(ttl=3600)  # Cache für 1 Stunde
 def load_ai_analyses():
-    """Lädt die AI-Analysen."""
+    """Lädt die gespeicherten AI-Analysen."""
     try:
-        analyses = load_analyses()
+        # Beispieldaten für Test und Entwicklung
+        analyses = [
+            {
+                'name': 'Max Mustermann',
+                'company': 'Beispiel GmbH',
+                'email': 'max@beispiel.de',
+                'website_summary': 'Die Beispiel GmbH ist ein führender Anbieter von IT-Dienstleistungen mit Fokus auf Cloud-Computing und KI-Lösungen. Das Unternehmen beschäftigt über 100 Mitarbeiter und hat seinen Hauptsitz in München.',
+                'linkedin_summary': 'Max Mustermann ist CTO mit 15 Jahren Erfahrung in der IT-Branche. Er hat einen starken Fokus auf innovative Technologien und digitale Transformation.',
+                'personalized_message': 'Sehr geehrter Herr Mustermann,\n\nIch habe mit großem Interesse die innovativen KI-Projekte der Beispiel GmbH verfolgt. Ihre Erfahrung im Bereich der digitalen Transformation ist beeindruckend.\n\nGerne würde ich mit Ihnen über mögliche Synergien im Bereich KI-gestützter Marketing-Automation sprechen.\n\nHaben Sie nächste Woche Zeit für ein kurzes Gespräch?\n\nBeste Grüße',
+                'status': 'aktiv',
+                'communication_style': 'formal'
+            },
+            {
+                'name': 'Anna Schmidt',
+                'company': 'Tech Solutions AG',
+                'email': 'anna.schmidt@techsolutions.de',
+                'website_summary': 'Tech Solutions AG ist ein innovatives Startup im Bereich E-Commerce und digitale Transformation. Das Unternehmen wächst schnell und hat bereits mehrere erfolgreiche Projekte durchgeführt.',
+                'linkedin_summary': 'Anna Schmidt ist Marketing Director mit Schwerpunkt auf digitalen Vertriebsstrategien. Sie hat erfolgreich mehrere E-Commerce Plattformen aufgebaut.',
+                'personalized_message': 'Hi Anna,\n\ndie Erfolge von Tech Solutions im E-Commerce-Bereich sind wirklich beeindruckend! Besonders Ihr letztes Projekt zur Optimierung der Customer Journey hat meine Aufmerksamkeit geweckt.\n\nIch hätte da ein paar spannende Ideen, wie wir Ihre Conversion Rate noch weiter steigern könnten.\n\nWann passt es dir am besten, darüber zu sprechen?\n\nViele Grüße',
+                'status': 'aktiv',
+                'communication_style': 'informal'
+            }
+        ]
+        
+        logger.debug(f"AI-Analysen erfolgreich geladen: {len(analyses)} Einträge gefunden")
         return analyses
     except Exception as e:
-        st.error(f"Fehler beim Laden der AI-Analysen: {str(e)}")
+        logger.error(f"Fehler beim Laden der AI-Analysen: {str(e)}")
         return []
 
 # Initialisiere den Scheduler
@@ -647,10 +671,21 @@ elif page == "🤖 AI-Aktivitäten":
         """, unsafe_allow_html=True)
         
         # Button zum Starten des AI-Agenten
-        if st.button("🚀 AI-Agenten starten", key="start_ai_agent"):
+        if st.button("🚀 AI-Agenten starten", key="start_ai_agent", type="primary"):
             with st.spinner("🤖 AI-Agent verarbeitet Leads..."):
-                scheduler.run_immediately()
-                st.success("✅ AI-Agent hat die Verarbeitung abgeschlossen!")
+                try:
+                    # Führe AI-Analyse durch
+                    new_analyses = run_ai_analysis()
+                    if new_analyses:
+                        st.success(f"✅ AI-Agent hat {len(new_analyses)} Leads erfolgreich analysiert!")
+                        # Cache löschen, damit die neuen Analysen angezeigt werden
+                        load_ai_analyses.clear()
+                        # Seite neu laden
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Keine neuen Leads zur Analyse gefunden.")
+                except Exception as e:
+                    st.error(f"❌ Fehler beim Ausführen der AI-Analyse: {str(e)}")
     else:
         # Suchfilter mit Amplifa-Design
         search = st.text_input(
