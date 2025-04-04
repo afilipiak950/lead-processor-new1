@@ -176,7 +176,7 @@ def get_leads_from_apify(api_key: Optional[str] = None, actor_id: Optional[str] 
     
     try:
         # Apify API-Endpunkt für Actor
-        url = f"https://api.apify.com/v2/actor-tasks/{apify_actor_id}/runs?token={apify_key}"
+        url = f"https://api.apify.com/v2/acts/{apify_actor_id}/runs?token={apify_key}"
         
         # Starte einen neuen Run
         response = requests.post(url, json={
@@ -188,14 +188,14 @@ def get_leads_from_apify(api_key: Optional[str] = None, actor_id: Optional[str] 
         
         # Warte auf Abschluss und hole die Ergebnisse
         while True:
-            status_url = f"https://api.apify.com/v2/actor-runs/{run_id}?token={apify_key}"
+            status_url = f"https://api.apify.com/v2/acts/runs/{run_id}?token={apify_key}"
             status_response = requests.get(status_url)
             status_response.raise_for_status()
             status = status_response.json()["data"]["status"]
             
             if status == "SUCCEEDED":
                 # Hole die Ergebnisse
-                results_url = f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={apify_key}"
+                results_url = f"https://api.apify.com/v2/acts/runs/{run_id}/dataset/items?token={apify_key}"
                 results_response = requests.get(results_url)
                 results_response.raise_for_status()
                 return results_response.json()
